@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queues: Linear Implementation and Issues</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    </style>
+    <!-- PrismJS for Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .queue-cell {
+            transition: all 0.3s ease;
+        }
+        .wasted-space {
+            background-image: repeating-linear-gradient(
+                45deg,
+                #fee2e2,
+                #fee2e2 10px,
+                #fecaca 10px,
+                #fecaca 20px
+            );
+        }
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .guide-box {
+            border-left: 4px solid #8b5cf6;
+            background-color: #f5f3ff;
+        }
+        .faq-box {
+            border-left: 4px solid #10b981;
+            background-color: #ecfdf5;
+        }
+        .transition-box {
+            border-left: 4px solid #f59e0b;
+            background-color: #fffbeb;
+        }
+        /* Override Prism background to match design */
+        pre[class*="language-"] {
+            background: #0f172a !important;
+            border-radius: 0.75rem;
+            margin: 0 !important;
+        }
+        .quiz-option {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .quiz-option:hover {
+            background-color: #f1f5f9;
+        }
+        .quiz-option.selected-correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        .quiz-option.selected-wrong {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        .pointer-label {
+            transition: transform 0.3s ease;
+        }
+        /* Offset for overlapping pointers */
+        .head-offset {
+            transform: translateY(-25px);
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased pb-12">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-layer-group text-blue-600 text-2xl"></i>
+                <h1 class="font-bold text-xl text-slate-800" data-i18n="appTitle">Queues: Linear Implementation</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-slate-600 hidden sm:inline-block font-medium not-italic">Created by Sam Li</span>
+                <button id="langToggle" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-1.5 rounded-full text-sm font-semibold transition shadow-sm">
+                    中 / EN
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 space-y-10">
+        
+        <!-- Introduction Section -->
+        <section class="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-slate-100">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700" data-i18n="objTitle">Learning Objectives & Concept</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <p class="mb-4 text-slate-700 leading-relaxed" data-i18n="conceptDesc">
+                        A <strong>Queue</strong> is a linear data structure that follows the <strong>First-In-First-Out (FIFO)</strong> principle. Think of it like a line of people waiting to buy tickets, or print jobs sent to a printer: the first one to join the line is the first one to be served.
+                    </p>
+                    <ul class="list-disc pl-5 space-y-2 text-slate-700 font-medium">
+                        <li data-i18n="obj1">Define a Queue as a FIFO data structure.</li>
+                        <li data-i18n="obj2">Implement a linear queue using an array and Head/Tail pointers.</li>
+                        <li data-i18n="obj3">Identify the "Drifting" problem (wasted space) in linear queues.</li>
+                        <li data-i18n="obj4">Understand how a Circular Queue solves the drifting problem.</li>
+                    </ul>
+                </div>
+                <div class="bg-blue-50 rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-inner">
+                    <i class="fa-solid fa-person-walking-arrow-right text-5xl text-blue-500 mb-4"></i>
+                    <h3 class="font-bold text-xl mb-2 text-blue-900" data-i18n="fifoTitle">FIFO: First-In-First-Out</h3>
+                    <p class="text-sm text-slate-700" data-i18n="fifoDesc">Items are added at the <strong>Tail (Rear)</strong> and removed from the <strong>Head (Front)</strong>. We need two pointers to keep track of both ends!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Simulator Section -->
+        <section class="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-slate-100">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-blue-700" data-i18n="simTitle">Interactive Queue Simulator</h2>
+                <button onclick="resetQueue()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2 rounded-lg font-semibold transition shadow-sm" data-i18n="btnReset"><i class="fa-solid fa-rotate-right mr-1"></i> Reset</button>
+            </div>
+            
+            <p class="mb-6 text-slate-600" data-i18n="simDesc">Click <strong>Enqueue</strong> to add an item, and <strong>Dequeue</strong> to remove an item. Watch how the <code>Head</code> and <code>Tail</code> pointers move independently. Pay close attention to what happens when the Tail reaches the end!</p>
+
+            <!-- Controls -->
+            <div class="flex space-x-4 mb-8 justify-center">
+                <button onclick="enqueue()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-md transition flex items-center transform active:scale-95">
+                    <i class="fa-solid fa-plus mr-2"></i> <span data-i18n="btnEnqueue">Enqueue (Add)</span>
+                </button>
+                <button onclick="dequeue()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-md transition flex items-center transform active:scale-95">
+                    <i class="fa-solid fa-minus mr-2"></i> <span data-i18n="btnDequeue">Dequeue (Remove)</span>
+                </button>
+            </div>
+
+            <!-- Queue Visualization -->
+            <div class="relative max-w-3xl mx-auto mt-20 mb-8">
+                <!-- Pointers -->
+                <div class="flex justify-between absolute -top-16 w-full px-4" id="pointers-container">
+                    <div id="head-pointer" class="absolute flex flex-col items-center transition-all duration-300 z-10 pointer-label" style="left: 0%;">
+                        <span class="text-sm font-bold text-red-600 bg-red-100 px-2 py-1 rounded shadow-sm mb-1" data-i18n="lblHead">Head</span>
+                        <i class="fa-solid fa-arrow-down text-red-500 text-xl"></i>
+                    </div>
+                    <div id="tail-pointer" class="absolute flex flex-col items-center transition-all duration-300 z-10 pointer-label" style="left: 0%;">
+                        <span class="text-sm font-bold text-green-600 bg-green-100 px-2 py-1 rounded shadow-sm mb-1" data-i18n="lblTail">Tail</span>
+                        <i class="fa-solid fa-arrow-down text-green-500 text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Array Cells -->
+                <div class="flex border-4 border-slate-700 rounded-xl overflow-hidden bg-slate-50 h-24 shadow-inner" id="queue-container">
+                    <!-- Generated by JS -->
+                </div>
+                
+                <!-- Indices -->
+                <div class="flex text-center text-sm text-slate-500 mt-3 font-mono font-semibold" id="index-container">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+
+            <!-- Teacher/Student Guide Box -->
+            <div class="guide-box p-5 rounded-r-lg mb-6">
+                <h4 class="font-bold text-purple-800 flex items-center mb-2"><i class="fa-regular fa-lightbulb mr-2"></i> <span data-i18n="guideThink">Think About It...</span></h4>
+                <p class="text-slate-700 text-sm" data-i18n="guideQ1">Try to Enqueue 5 items until the queue is full. Then Dequeue 2 items. Can you Enqueue a new item now? Why or why not?</p>
+            </div>
+
+            <!-- Drifting Problem Alert -->
+            <div id="drifting-alert" class="hidden bg-orange-50 border-l-4 border-orange-500 text-orange-800 p-5 rounded-r-lg mt-4 shadow-sm transition-all">
+                <p class="font-bold text-lg flex items-center"><i class="fa-solid fa-triangle-exclamation mr-2 text-orange-600"></i><span data-i18n="driftTitle">The Drifting Problem (False Overflow)</span></p>
+                <p class="mt-2 text-slate-700" data-i18n="driftDesc">Notice the red striped area? The <code>Tail</code> pointer has reached the maximum index, so the program thinks the queue is full. However, because we dequeued items, there is perfectly good empty space at the front! This wasted space is the major flaw of a simple linear queue.</p>
+            </div>
+        </section>
+
+        <!-- Code Implementation Section -->
+        <section class="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-slate-100">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700" data-i18n="codeTitle">Linear Queue Implementation Details</h2>
+            <p class="mb-4 text-slate-600" data-i18n="codeDesc">Review the code below. Notice how the array size is fixed, and how the <code>is_empty()</code> and <code>is_full()</code> functions rely entirely on the positions of the Head and Tail pointers, not the actual number of items.</p>
+            
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-200 mb-4">
+                <button class="px-4 py-2 tab-active transition" onclick="switchTab('python', this)">Python</button>
+                <button class="px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition" onclick="switchTab('cpp', this)">C++</button>
+            </div>
+
+            <!-- Python Code (English & Chinese) -->
+            <div id="code-python" class="block">
+                <div class="lang-en block">
+<pre><code class="language-python">class LinearQueue:
+    def __init__(self, size):
+        self.max_size = size
+        self.queue = [None] * size
+        self.head = 0
+        self.tail = 0
+
+    def is_empty(self):
+        # Empty when both pointers point to the same index
+        return self.head == self.tail
+
+    def is_full(self):
+        # Full when tail reaches the absolute end of the array
+        # This causes the "Drifting Problem"
+        return self.tail == self.max_size
+
+    def enqueue(self, item):
+        if self.is_full():
+            print("Queue is Full! (False Overflow may occur)")
+            return
+        self.queue[self.tail] = item
+        self.tail += 1  # Move tail pointer to the right
+
+    def dequeue(self):
+        if self.is_empty():
+            print("Queue is Empty!")
+            return None
+        item = self.queue[self.head]
+        self.queue[self.head] = None # Clear slot (optional)
+        self.head += 1  # Move head pointer to the right
+        return item</code></pre>
+                </div>
+                <div class="lang-zh hidden">
+<pre><code class="language-python">class LinearQueue:
+    def __init__(self, size):
+        self.max_size = size
+        self.queue = [None] * size
+        self.head = 0
+        self.tail = 0
+
+    def is_empty(self):
+        # 當兩個指標指向同一個索引時，代表佇列為空
+        return self.head == self.tail
+
+    def is_full(self):
+        # 當 tail 指標到達陣列的最末端時，代表佇列已滿
+        # 這會導致「漂移問題 (Drifting Problem)」
+        return self.tail == self.max_size
+
+    def enqueue(self, item):
+        if self.is_full():
+            print("佇列已滿！(可能會發生假溢位)")
+            return
+        self.queue[self.tail] = item
+        self.tail += 1  # 將 tail 指標向右移動
+
+    def dequeue(self):
+        if self.is_empty():
+            print("佇列為空！")
+            return None
+        item = self.queue[self.head]
+        self.queue[self.head] = None # 清空位置 (非必要)
+        self.head += 1  # 將 head 指標向右移動
+        return item</code></pre>
+                </div>
+            </div>
+
+            <!-- C++ Code (English & Chinese) -->
+            <div id="code-cpp" class="hidden">
+                <div class="lang-en block">
+<pre><code class="language-cpp">#include &lt;iostream&gt;
+using namespace std;
+
+class LinearQueue {
+private:
+    int* queue;
+    int head, tail, maxSize;
+
+public:
+    LinearQueue(int size) {
+        maxSize = size;
+        queue = new int[maxSize];
+        head = 0;
+        tail = 0;
+    }
+
+    bool isEmpty() { 
+        // Empty when both pointers point to the same index
+        return head == tail; 
+    }
+    
+    bool isFull() { 
+        // Full when tail reaches the absolute end of the array
+        // This causes the "Drifting Problem"
+        return tail == maxSize; 
+    }
+
+    void enqueue(int item) {
+        if (isFull()) {
+            cout << "Queue is Full! (False Overflow may occur)\n";
+            return;
+        }
+        queue[tail] = item;
+        tail++; // Move tail pointer to the right
+    }
+
+    int dequeue() {
+        if (isEmpty()) {
+            cout << "Queue is Empty!\n";
+            return -1;
+        }
+        int item = queue[head];
+        head++; // Move head pointer to the right
+        return item;
+    }
+};</code></pre>
+                </div>
+                <div class="lang-zh hidden">
+<pre><code class="language-cpp">#include &lt;iostream&gt;
+using namespace std;
+
+class LinearQueue {
+private:
+    int* queue;
+    int head, tail, maxSize;
+
+public:
+    LinearQueue(int size) {
+        maxSize = size;
+        queue = new int[maxSize];
+        head = 0;
+        tail = 0;
+    }
+
+    bool isEmpty() { 
+        // 當兩個指標指向同一個索引時，代表佇列為空
+        return head == tail; 
+    }
+    
+    bool isFull() { 
+        // 當 tail 指標到達陣列的最末端時，代表佇列已滿
+        // 這會導致「漂移問題 (Drifting Problem)」
+        return tail == maxSize; 
+    }
+
+    void enqueue(int item) {
+        if (isFull()) {
+            cout << "佇列已滿！(可能會發生假溢位)\n";
+            return;
+        }
+        queue[tail] = item;
+        tail++; // 將 tail 指標向右移動
+    }
+
+    int dequeue() {
+        if (isEmpty()) {
+            cout << "佇列為空！\n";
+            return -1;
+        }
+        int item = queue[head];
+        head++; // 將 head 指標向右移動
+        return item;
+    }
+};</code></pre>
+                </div>
+            </div>
+            
+            <div class="faq-box p-5 rounded-r-lg mt-6">
+                <h4 class="font-bold text-emerald-800 flex items-center mb-2"><i class="fa-solid fa-circle-question mr-2"></i> <span data-i18n="faqQ1">FAQ: Why do we just move the Head pointer instead of shifting all items forward?</span></h4>
+                <p class="text-slate-700 text-sm" data-i18n="faqA1">Shifting all items forward every time we Dequeue takes too much time (O(N) time complexity). Moving the Head pointer is instant (O(1) time complexity), which is why we do it, even though it leads to the Drifting problem.</p>
+            </div>
+        </section>
+
+        <!-- Comparisons & Exam Traps -->
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Stacks vs Queues -->
+            <section class="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
+                <h2 class="text-xl font-bold mb-4 text-blue-700" data-i18n="compTitle">Stacks vs Queues</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700">
+                                <th class="p-3 border-b font-bold rounded-tl-lg" data-i18n="tblFeature">Feature</th>
+                                <th class="p-3 border-b font-bold" data-i18n="tblQueue">Queue</th>
+                                <th class="p-3 border-b font-bold rounded-tr-lg" data-i18n="tblStack">Stack</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-600">
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="p-3 border-b font-semibold" data-i18n="tblPrin">Principle</td>
+                                <td class="p-3 border-b">FIFO</td>
+                                <td class="p-3 border-b">LIFO</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="p-3 border-b font-semibold" data-i18n="tblIns">Insertion</td>
+                                <td class="p-3 border-b" data-i18n="tblInsQ">Enqueue (at Tail)</td>
+                                <td class="p-3 border-b" data-i18n="tblInsS">Push (at Top)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="p-3 border-b font-semibold" data-i18n="tblDel">Deletion</td>
+                                <td class="p-3 border-b" data-i18n="tblDelQ">Dequeue (at Head)</td>
+                                <td class="p-3 border-b" data-i18n="tblDelS">Pop (at Top)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="p-3 border-b font-semibold" data-i18n="tblPtr">Pointers</td>
+                                <td class="p-3 border-b" data-i18n="tblPtrQ">Head & Tail (2)</td>
+                                <td class="p-3 border-b" data-i18n="tblPtrS">Top (1)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- HKDSE Exam Trap -->
+            <section class="bg-red-50 rounded-2xl shadow-sm p-6 border border-red-100">
+                <h2 class="text-xl font-bold mb-4 text-red-700 flex items-center">
+                    <i class="fa-solid fa-bomb mr-2"></i> <span data-i18n="trapTitle">Exam Trap Warning</span>
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-bold text-red-800" data-i18n="trapMistakeLbl">Common Mistake:</h3>
+                        <p class="text-sm text-red-900" data-i18n="trapMistake">Assuming that a linear queue is full ONLY when all slots are physically occupied by data.</p>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-red-800" data-i18n="trapWhyLbl">The Reality:</h3>
+                        <p class="text-sm text-red-900" data-i18n="trapWhy">Because of the "Drifting" problem, the <code>Tail</code> pointer can reach the end of the array (indicating it's "full" to the computer) even if there are empty slots at the front due to previous <code>Dequeue</code> operations.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg border border-red-200 shadow-sm mt-2">
+                        <h3 class="font-bold text-green-700 mb-1 flex items-center" data-i18n="trapTipLbl"><i class="fa-solid fa-check-circle mr-1"></i> Exam Tip:</h3>
+                        <p class="text-sm text-slate-700" data-i18n="trapTip">In exams, carefully trace the Head and Tail pointers. If asked how to solve the wasted space issue, always answer: <strong>"Use a Circular Queue"</strong>.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Transition Guide -->
+        <div class="transition-box p-5 rounded-lg shadow-sm">
+            <h4 class="font-bold text-amber-800 flex items-center mb-2"><i class="fa-solid fa-forward-step mr-2"></i> <span data-i18n="transTitle">Moving Forward: How do we fix this?</span></h4>
+            <p class="text-slate-700 text-sm" data-i18n="transDesc">We know shifting elements is too slow, and leaving empty space is wasteful. What if the end of the array could magically connect back to the empty spaces at the beginning? Let's look at the Circular Queue.</p>
+        </div>
+
+        <!-- The Solution: Circular Queue -->
+        <section class="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-slate-100">
+            <div class="flex items-center mb-6">
+                <i class="fa-solid fa-rotate text-3xl text-indigo-500 mr-3"></i>
+                <h2 class="text-2xl font-bold text-indigo-700" data-i18n="cqTitle">The Solution: Circular Queue</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <p class="mb-4 text-slate-700 leading-relaxed" data-i18n="cqDesc">
+                        To solve the Drifting Problem, we logically connect the end of the array back to the beginning, creating a circle. When the <code>Tail</code> or <code>Head</code> pointer reaches the end of the array, it wraps around back to index 0.
+                    </p>
+                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
+                        <h4 class="font-bold text-indigo-800 mb-2" data-i18n="cqMathTitle">The Magic Formula: Modulo Arithmetic</h4>
+                        <p class="text-sm text-slate-700 font-mono bg-white p-2 rounded border border-indigo-200 text-center mb-2">
+                            Next Index = (Current Index + 1) % MaxSize
+                        </p>
+                        <p class="text-sm text-slate-600" data-i18n="cqMathDesc">
+                            The modulo operator (<code>%</code>) gives the remainder of a division. If MaxSize is 5, and Tail is at index 4, the next position is <code>(4 + 1) % 5 = 0</code>. It loops perfectly!
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="bg-slate-900 rounded-xl p-5 shadow-inner">
+                    <h4 class="text-indigo-300 font-bold mb-3 text-sm" data-i18n="cqCodeTitle">Circular Queue Pointer Movement (Python)</h4>
+<pre><code class="language-python"># Enqueue (Moving Tail)
+self.tail = (self.tail + 1) % self.max_size
+
+# Dequeue (Moving Head)
+self.head = (self.head + 1) % self.max_size</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quiz Section -->
+        <section class="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-slate-100">
+            <h2 class="text-2xl font-bold mb-6 text-blue-700 flex items-center"><i class="fa-solid fa-clipboard-question mr-3"></i><span data-i18n="quizTitle">Test Your Knowledge</span></h2>
+            
+            <div class="space-y-8">
+                <!-- Question 1 -->
+                <div class="quiz-question" id="q1">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3" data-i18n="q1Text">1. What causes the "Drifting Problem" in a linear queue?</h3>
+                    <div class="space-y-2">
+                        <div class="quiz-option border border-slate-200 rounded-lg p-3" onclick="checkAnswer('q1', 0, false)">
+                            <span data-i18n="q1O1">A) The array size is too small.</span>
+                        </div>
+                        <div class="quiz-option border border-slate-200 rounded-lg p-3" onclick="checkAnswer('q1', 1, false)">
+                            <span data-i18n="q1O2">B) Shifting all elements forward during Dequeue.</span>
+                        </div>
+                        <div class="quiz-option border border-slate-200 rounded-lg p-3" onclick="checkAnswer('q1', 2, true)">
+                            <span data-i18n="q1O3">C) Moving the Head pointer during Dequeue without shifting elements, leaving empty spaces behind.</span>
+                        </div>
+                    </div>
+                    <div class="quiz-explanation hidden mt-3 p-4 rounded-lg bg-slate-50 text-sm text-slate-700 border border-slate-200">
+                        <strong data-i18n="expTitle">Explanation:</strong> <span data-i18n="q1Exp">Correct! To save time (O(1)), we only move the Head pointer when removing items. This leaves empty, unusable spaces at the front of the array, eventually causing the Tail to hit the end even if the queue isn't truly full.</span>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="quiz-question" id="q2">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3" data-i18n="q2Text">2. If a Circular Queue has a MaxSize of 6, and the Tail is currently at index 5, what will be the new Tail index after one Enqueue operation?</h3>
+                    <div class="space-y-2">
+                        <div class="quiz-option border border-slate-200 rounded-lg p-3" onclick="checkAnswer('q2', 0, true)">
+                            <span data-i18n="q2O1">A) 0</span>
+                        </div>
+                        <div class="quiz-option border border-slate-200 rounded-lg p-3" onclick="checkAnswer('q2', 1, false)">
+                            <span data-i18n="q2O2">B) 6</span>
+                        </div>
+                        <div class="quiz-option border border-slate-200 rounded-lg p-3" onclick="checkAnswer('q2', 2, false)">
+                            <span data-i18n="q2O3">C) 1</span>
+                        </div>
+                    </div>
+                    <div class="quiz-explanation hidden mt-3 p-4 rounded-lg bg-slate-50 text-sm text-slate-700 border border-slate-200">
+                        <strong data-i18n="expTitle">Explanation:</strong> <span data-i18n="q2Exp">Correct! Using the modulo formula: (Current Index + 1) % MaxSize. So, (5 + 1) % 6 = 6 % 6 = 0. The pointer wraps around to the beginning!</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- PrismJS Scripts for Syntax Highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Translations ---
+        const translations = {
+            en: {
+                appTitle: "Queues: Linear Implementation",
+                objTitle: "Learning Objectives & Concept",
+                conceptDesc: "A <strong>Queue</strong> is a linear data structure that follows the <strong>First-In-First-Out (FIFO)</strong> principle. Think of it like a line of people waiting to buy tickets, or print jobs sent to a printer: the first one to join the line is the first one to be served.",
+                obj1: "Define a Queue as a FIFO data structure.",
+                obj2: "Implement a linear queue using an array and Head/Tail pointers.",
+                obj3: "Identify the \"Drifting\" problem (wasted space) in linear queues.",
+                obj4: "Understand how a Circular Queue solves the drifting problem.",
+                fifoTitle: "FIFO: First-In-First-Out",
+                fifoDesc: "Items are added at the <strong>Tail (Rear)</strong> and removed from the <strong>Head (Front)</strong>. We need two pointers to keep track of both ends!",
+                simTitle: "Interactive Queue Simulator",
+                btnReset: "<i class=\"fa-solid fa-rotate-right mr-1\"></i> Reset",
+                simDesc: "Click <strong>Enqueue</strong> to add an item, and <strong>Dequeue</strong> to remove an item. Watch how the <code>Head</code> and <code>Tail</code> pointers move independently. Pay close attention to what happens when the Tail reaches the end!",
+                btnEnqueue: "Enqueue (Add)",
+                btnDequeue: "Dequeue (Remove)",
+                lblHead: "Head",
+                lblTail: "Tail",
+                guideThink: "Think About It...",
+                guideQ1: "Try to Enqueue 5 items until the queue is full. Then Dequeue 2 items. Can you Enqueue a new item now? Why or why not?",
+                driftTitle: "The Drifting Problem (False Overflow)",
+                driftDesc: "Notice the red striped area? The <code>Tail</code> pointer has reached the maximum index, so the program thinks the queue is full. However, because we dequeued items, there is perfectly good empty space at the front! This wasted space is the major flaw of a simple linear queue.",
+                codeTitle: "Linear Queue Implementation Details",
+                codeDesc: "Review the code below. Notice how the array size is fixed, and how the <code>is_empty()</code> and <code>is_full()</code> functions rely entirely on the positions of the Head and Tail pointers, not the actual number of items.",
+                faqQ1: "FAQ: Why do we just move the Head pointer instead of shifting all items forward?",
+                faqA1: "Shifting all items forward every time we Dequeue takes too much time (O(N) time complexity). Moving the Head pointer is instant (O(1) time complexity), which is why we do it, even though it leads to the Drifting problem.",
+                compTitle: "Stacks vs Queues",
+                tblFeature: "Feature",
+                tblQueue: "Queue",
+                tblStack: "Stack",
+                tblPrin: "Principle",
+                tblIns: "Insertion",
+                tblInsQ: "Enqueue (at Tail)",
+                tblInsS: "Push (at Top)",
+                tblDel: "Deletion",
+                tblDelQ: "Dequeue (at Head)",
+                tblDelS: "Pop (at Top)",
+                tblPtr: "Pointers",
+                tblPtrQ: "Head & Tail (2 pointers)",
+                tblPtrS: "Top (1 pointer)",
+                trapTitle: "Exam Trap Warning",
+                trapMistakeLbl: "Common Mistake:",
+                trapMistake: "Assuming that a linear queue is full ONLY when all slots are physically occupied by data.",
+                trapWhyLbl: "The Reality:",
+                trapWhy: "Because of the \"Drifting\" problem, the <code>Tail</code> pointer can reach the end of the array (indicating it's \"full\" to the computer) even if there are empty slots at the front due to previous <code>Dequeue</code> operations.",
+                trapTipLbl: "<i class=\"fa-solid fa-check-circle mr-1\"></i> Exam Tip:",
+                trapTip: "In exams, carefully trace the Head and Tail pointers. If asked how to solve the wasted space issue, always answer: <strong>\"Use a Circular Queue\"</strong>.",
+                transTitle: "Moving Forward: How do we fix this?",
+                transDesc: "We know shifting elements is too slow, and leaving empty space is wasteful. What if the end of the array could magically connect back to the empty spaces at the beginning? Let's look at the Circular Queue.",
+                cqTitle: "The Solution: Circular Queue",
+                cqDesc: "To solve the Drifting Problem, we logically connect the end of the array back to the beginning, creating a circle. When the <code>Tail</code> or <code>Head</code> pointer reaches the end of the array, it wraps around back to index 0.",
+                cqMathTitle: "The Magic Formula: Modulo Arithmetic",
+                cqMathDesc: "The modulo operator (<code>%</code>) gives the remainder of a division. If MaxSize is 5, and Tail is at index 4, the next position is <code>(4 + 1) % 5 = 0</code>. It loops perfectly!",
+                cqCodeTitle: "Circular Queue Pointer Movement (Python)",
+                quizTitle: "Test Your Knowledge",
+                q1Text: "1. What causes the \"Drifting Problem\" in a linear queue?",
+                q1O1: "A) The array size is too small.",
+                q1O2: "B) Shifting all elements forward during Dequeue.",
+                q1O3: "C) Moving the Head pointer during Dequeue without shifting elements, leaving empty spaces behind.",
+                expTitle: "Explanation:",
+                q1Exp: "Correct! To save time (O(1)), we only move the Head pointer when removing items. This leaves empty, unusable spaces at the front of the array, eventually causing the Tail to hit the end even if the queue isn't truly full.",
+                q2Text: "2. If a Circular Queue has a MaxSize of 6, and the Tail is currently at index 5, what will be the new Tail index after one Enqueue operation?",
+                q2O1: "A) 0",
+                q2O2: "B) 6",
+                q2O3: "C) 1",
+                q2Exp: "Correct! Using the modulo formula: (Current Index + 1) % MaxSize. So, (5 + 1) % 6 = 6 % 6 = 0. The pointer wraps around to the beginning!"
+            },
+            zh: {
+                appTitle: "佇列：線性實作與問題",
+                objTitle: "學習目標與概念",
+                conceptDesc: "<strong>佇列 (Queue)</strong> 是一種遵循 <strong>先進先出 (FIFO)</strong> 原則的線性資料結構。想像一下排隊買票，或者傳送到印表機的列印任務：最先加入隊伍的會最先得到處理。",
+                obj1: "定義佇列為先進先出 (FIFO) 的資料結構。",
+                obj2: "使用陣列及隊首(Head)/隊尾(Tail)指標實作線性佇列。",
+                obj3: "識別線性佇列中的「漂移問題」 (假溢位/空間浪費)。",
+                obj4: "理解環狀佇列 (Circular Queue) 如何解決漂移問題。",
+                fifoTitle: "FIFO: 先進先出",
+                fifoDesc: "資料從 <strong>隊尾 (Tail)</strong> 加入，並從 <strong>隊首 (Head)</strong> 移除。我們需要兩個指標來追蹤佇列的兩端！",
+                simTitle: "互動式佇列模擬器",
+                btnReset: "<i class=\"fa-solid fa-rotate-right mr-1\"></i> 重設",
+                simDesc: "點擊 <strong>加入佇列 (Enqueue)</strong> 來新增項目，點擊 <strong>移除佇列 (Dequeue)</strong> 來移除項目。觀察 <code>Head</code> 和 <code>Tail</code> 指標如何獨立移動。特別留意當 Tail 到達末端時會發生什麼事！",
+                btnEnqueue: "加入佇列 (Enqueue)",
+                btnDequeue: "移除佇列 (Dequeue)",
+                lblHead: "隊首 (Head)",
+                lblTail: "隊尾 (Tail)",
+                guideThink: "思考一下...",
+                guideQ1: "嘗試加入 5 個項目直到佇列滿了。然後移除 2 個項目。你現在還能加入新項目嗎？為什麼可以或為什麼不行？",
+                driftTitle: "漂移問題 (假溢位 False Overflow)",
+                driftDesc: "看到紅色條紋區域了嗎？<code>Tail</code> 指標已到達最大索引值，所以程式認為佇列已滿。然而，因為我們剛才移除了項目，前方其實還有完美的空位！這種空間浪費是簡單線性佇列的最大缺陷。",
+                codeTitle: "線性佇列程式實作細節",
+                codeDesc: "檢視下方代碼。注意陣列大小是固定的，而且 <code>is_empty()</code> 和 <code>is_full()</code> 函數完全依賴 Head 和 Tail 指標的位置來判斷，而不是實際的資料數量。",
+                faqQ1: "常見問題：為什麼我們只移動 Head 指標，而不是把所有資料往前移？",
+                faqA1: "每次 Dequeue 時把所有資料往前移會消耗太多時間（時間複雜度 O(N)）。只移動 Head 指標是瞬間完成的（時間複雜度 O(1)），這就是為什麼我們這樣做，即使這會導致漂移問題。",
+                compTitle: "堆疊 (Stack) 與 佇列 (Queue) 比較",
+                tblFeature: "特徵",
+                tblQueue: "佇列 (Queue)",
+                tblStack: "堆疊 (Stack)",
+                tblPrin: "原則",
+                tblIns: "加入",
+                tblInsQ: "Enqueue (於隊尾)",
+                tblInsS: "Push (於頂部)",
+                tblDel: "移除",
+                tblDelQ: "Dequeue (於隊首)",
+                tblDelS: "Pop (於頂部)",
+                tblPtr: "指標",
+                tblPtrQ: "Head 與 Tail (2個指標)",
+                tblPtrS: "Top (1個指標)",
+                trapTitle: "考試陷阱警告",
+                trapMistakeLbl: "常犯錯誤：",
+                trapMistake: "誤以為線性佇列只有在「所有位置都在物理上被資料填滿」時才是滿的。",
+                trapWhyLbl: "實際情況：",
+                trapWhy: "因為「漂移問題」，即使前方因為 <code>Dequeue</code> 操作而有空位，<code>Tail</code> 指標仍可能到達陣列末端（對電腦而言顯示為「已滿」）。",
+                trapTipLbl: "<i class=\"fa-solid fa-check-circle mr-1\"></i> 考試提示：",
+                trapTip: "在考試中，務必小心追蹤 Head 和 Tail 指標。如果題目問到如何解決空間浪費問題，標準答案永遠是：<strong>「使用環狀佇列 (Circular Queue)」</strong>。",
+                transTitle: "繼續前進：我們該如何解決這個問題？",
+                transDesc: "我們知道移動所有元素太慢了，而留下空位又太浪費。如果陣列的末端能夠神奇地連接回開頭的空位呢？讓我們來看看「環狀佇列」。",
+                cqTitle: "解決方案：環狀佇列 (Circular Queue)",
+                cqDesc: "為了解決漂移問題，我們在邏輯上將陣列的末端連接回開頭，形成一個圓圈。當 <code>Tail</code> 或 <code>Head</code> 指標到達陣列末端時，它會繞回到索引 0。",
+                cqMathTitle: "魔法公式：模除運算 (Modulo Arithmetic)",
+                cqMathDesc: "模除運算子 (<code>%</code>) 會給出除法的餘數。如果 MaxSize 是 5，而 Tail 在索引 4，下一個位置就是 <code>(4 + 1) % 5 = 0</code>。完美循環！",
+                cqCodeTitle: "環狀佇列指標移動 (Python)",
+                quizTitle: "測試你的知識",
+                q1Text: "1. 是什麼導致了線性佇列中的「漂移問題」？",
+                q1O1: "A) 陣列大小太小。",
+                q1O2: "B) 在 Dequeue 時將所有元素向前移動。",
+                q1O3: "C) 在 Dequeue 時只移動 Head 指標而不移動元素，留下後方的空位。",
+                expTitle: "解釋：",
+                q1Exp: "這正是正確答案。為了節省時間 (O(1))，我們在移除項目時只移動 Head 指標。這會在陣列前方留下無法使用的空位，最終導致即使佇列未滿，Tail 也會撞到陣列末端。",
+                q2Text: "2. 如果一個環狀佇列的 MaxSize 為 6，且 Tail 目前在索引 5，執行一次 Enqueue 操作後，新的 Tail 索引會是多少？",
+                q2O1: "A) 0",
+                q2O2: "B) 6",
+                q2O3: "C) 1",
+                q2Exp: "正確！使用模除公式：(目前索引 + 1) % MaxSize。因此，(5 + 1) % 6 = 6 % 6 = 0。指標完美繞回開頭！"
+            }
+        };
+
+        let currentLang = 'en';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            
+            // Update simple text
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerHTML = translations[currentLang][key];
+                }
+            });
+
+            // Update code blocks (toggle visibility)
+            document.querySelectorAll('.lang-en').forEach(el => {
+                el.style.display = currentLang === 'en' ? 'block' : 'none';
+            });
+            document.querySelectorAll('.lang-zh').forEach(el => {
+                el.style.display = currentLang === 'zh' ? 'block' : 'none';
+            });
+
+            updatePointers(); // Re-render pointers for language update
+        }
+
+        document.getElementById('langToggle').addEventListener('click', toggleLanguage);
+
+        // --- Simulator Logic ---
+        const MAX_SIZE = 5;
+        let queue = new Array(MAX_SIZE).fill(null);
+        let head = 0;
+        let tail = 0;
+        let itemCounter = 1;
+
+        const queueContainer = document.getElementById('queue-container');
+        const indexContainer = document.getElementById('index-container');
+        const headPointer = document.getElementById('head-pointer');
+        const tailPointer = document.getElementById('tail-pointer');
+        const driftingAlert = document.getElementById('drifting-alert');
+
+        function initSimulator() {
+            queueContainer.innerHTML = '';
+            indexContainer.innerHTML = '';
+            for (let i = 0; i < MAX_SIZE; i++) {
+                // Cells
+                const cell = document.createElement('div');
+                cell.className = 'queue-cell flex-1 border-r-4 border-slate-700 flex items-center justify-center text-2xl font-bold text-blue-700 last:border-r-0';
+                cell.id = `cell-${i}`;
+                queueContainer.appendChild(cell);
+
+                // Indices
+                const idx = document.createElement('div');
+                idx.className = 'flex-1';
+                idx.innerText = i;
+                indexContainer.appendChild(idx);
+            }
+            updatePointers();
+        }
+
+        function updatePointers() {
+            const cellWidth = 100 / MAX_SIZE;
+            
+            // Move Head
+            if (head < MAX_SIZE) {
+                headPointer.style.left = `calc(${head * cellWidth}% + ${cellWidth / 2}% - 24px)`;
+                headPointer.style.display = 'flex';
+            } else {
+                headPointer.style.display = 'none'; // Reached end
+            }
+
+            // Move Tail
+            if (tail <= MAX_SIZE) {
+                // Tail points to the NEXT empty slot, so it can go up to MAX_SIZE
+                let tailPos = tail === MAX_SIZE ? MAX_SIZE - 0.1 : tail; // Keep it visible at the edge
+                tailPointer.style.left = `calc(${tailPos * cellWidth}% + ${cellWidth / 2}% - 24px)`;
+            }
+
+            // Prevent Overlap UI Issue
+            if (head === tail && head < MAX_SIZE) {
+                headPointer.classList.add('head-offset');
+            } else {
+                headPointer.classList.remove('head-offset');
+            }
+
+            // Check Drifting Problem
+            if (tail === MAX_SIZE && head > 0) {
+                driftingAlert.classList.remove('hidden');
+                // Highlight wasted space
+                for (let i = 0; i < head; i++) {
+                    document.getElementById(`cell-${i}`).classList.add('wasted-space');
+                }
+            } else {
+                driftingAlert.classList.add('hidden');
+                for (let i = 0; i < MAX_SIZE; i++) {
+                    document.getElementById(`cell-${i}`).classList.remove('wasted-space');
+                }
+            }
+        }
+
+        function enqueue() {
+            if (tail === MAX_SIZE) {
+                // Custom modal replacement for alert to avoid iframe blocking issues
+                const msg = currentLang === 'en' ? "Queue is Full! (Cannot Enqueue)" : "佇列已滿！(無法加入)";
+                showToast(msg, "bg-red-500");
+                return;
+            }
+            
+            queue[tail] = `V${itemCounter++}`;
+            const cell = document.getElementById(`cell-${tail}`);
+            cell.innerText = queue[tail];
+            cell.classList.add('bg-blue-200');
+            
+            tail++;
+            updatePointers();
+        }
+
+        function dequeue() {
+            if (head === tail) {
+                const msg = currentLang === 'en' ? "Queue is Empty! (Cannot Dequeue)" : "佇列為空！(無法移除)";
+                showToast(msg, "bg-orange-500");
+                return;
+            }
+            
+            const cell = document.getElementById(`cell-${head}`);
+            cell.innerText = '';
+            cell.classList.remove('bg-blue-200');
+            queue[head] = null;
+            
+            head++;
+            updatePointers();
+        }
+
+        function resetQueue() {
+            queue = new Array(MAX_SIZE).fill(null);
+            head = 0;
+            tail = 0;
+            itemCounter = 1;
+            initSimulator();
+            driftingAlert.classList.add('hidden');
+            showToast(currentLang === 'en' ? "Queue Reset!" : "佇列已重設！", "bg-green-500");
+        }
+
+        // Custom Toast Notification to replace alert()
+        function showToast(message, colorClass) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 right-5 ${colorClass} text-white px-6 py-3 rounded-lg shadow-lg font-bold transition-opacity duration-300 z-50`;
+            toast.innerText = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // --- Tab Logic ---
+        function switchTab(lang, btn) {
+            document.getElementById('code-python').style.display = lang === 'python' ? 'block' : 'none';
+            document.getElementById('code-cpp').style.display = lang === 'cpp' ? 'block' : 'none';
+            
+            // Update button styles
+            const buttons = btn.parentElement.children;
+            for(let b of buttons) {
+                b.className = "px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition";
+            }
+            btn.className = "px-4 py-2 tab-active transition";
+        }
+
+        // --- Quiz Logic ---
+        function checkAnswer(questionId, optionIndex, isCorrect) {
+            const questionDiv = document.getElementById(questionId);
+            const options = questionDiv.querySelectorAll('.quiz-option');
+            const explanation = questionDiv.querySelector('.quiz-explanation');
+            const expText = explanation.querySelector('span');
+
+            // Reset options
+            options.forEach(opt => {
+                opt.classList.remove('selected-correct', 'selected-wrong');
+                opt.style.pointerEvents = 'none'; // Disable clicking again
+            });
+
+            // Highlight selected
+            if (isCorrect) {
+                options[optionIndex].classList.add('selected-correct');
+                explanation.classList.remove('bg-red-50', 'border-red-200');
+                explanation.classList.add('bg-green-50', 'border-green-200');
+            } else {
+                options[optionIndex].classList.add('selected-wrong');
+                explanation.classList.remove('bg-green-50', 'border-green-200');
+                explanation.classList.add('bg-red-50', 'border-red-200');
+                
+                // Highlight the correct one as well
+                options.forEach((opt, idx) => {
+                    if (opt.getAttribute('onclick').includes('true')) {
+                        opt.classList.add('selected-correct');
+                    }
+                });
+            }
+
+            // Show explanation
+            explanation.classList.remove('hidden');
+        }
+
+        // Initialize
+        initSimulator();
+    </script>
+</body>
+</html>
